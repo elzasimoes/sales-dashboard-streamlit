@@ -11,9 +11,32 @@ st.set_page_config(layout="wide")
 st.title("Sales Dashboard :shopping_trolley:")
 
 url = "https://labdados.com/produtos"
-response = requests.get(url)
+regioes = ['Brasil', 'Centro-Oeste', 'Nordeste', 'Norte', 'Sudeste', 'Sul']
+
+st.sidebar.title('Filtros')
+
+regiao = st.sidebar.selectbox('Região', regioes)
+
+if regiao == 'Brasil':
+    regiao = ''
+
+todos_anos = st.sidebar.checkbox('Dados de todo o período', value = True)
+
+if todos_anos is True:
+    ano = ''
+
+else:
+    ano = st.sidebar.slider('Ano', 2020, 2023)
+
+query_string = {'regiao':regiao.lower(), 'ano':ano}
+response = requests.get(url, params=query_string)
 data = pd.DataFrame.from_dict(response.json())
 data["Data da Compra"] = pd.to_datetime(data["Data da Compra"], format="%d/%m/%Y")
+
+filtro_vendedores = st.sidebar.multiselect('Vendedores', data['Vendedor'].unique())
+if filtro_vendedores is True:
+    data = data[data['Vendedor']].isin(filtro_vendedores)
+
 
 # Tabelas
 
