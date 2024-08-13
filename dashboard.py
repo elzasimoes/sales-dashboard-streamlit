@@ -55,6 +55,9 @@ fig_receita_categorias = px.bar(
 
 fig_receita_categorias.update_layout(yaxis_title="Receita")
 
+# Tabela vendedores
+vendedores = pd.DataFrame(data.groupby("Vendedor")["Preço"].agg(["sum", "count"]))
+
 
 # Graficos
 fig_mapa_receita = px.scatter_geo(
@@ -83,17 +86,65 @@ fig_receita_mensal = px.line(
 
 fig_receita_mensal.update_layout(yaxis_title="Receita")
 
+# Visualização do streamlit
 
-column1, column2 = st.columns(2)
+tab1, tab2, tab3 = st.tabs(["Receita", "Quantidade de Vendas", "Vendedores"])
 
-with column1:
-    st.metric("Receita", utils.format_number(data["Preço"].sum()), "R$")
-    st.plotly_chart(fig_mapa_receita, use_container_width=True)
-    st.plotly_chart(fig_receita_estados, use_container_width=True)
+with tab1:
+    column1, column2 = st.columns(2)
+    with column1:
+        st.metric("Receita", utils.format_number(data["Preço"].sum()), "R$")
+        st.plotly_chart(fig_mapa_receita, use_container_width=True)
+        st.plotly_chart(fig_receita_estados, use_container_width=True)
 
-with column2:
-    st.metric("Quantidade de vendas", utils.format_number(data.shape[0]))
-    st.plotly_chart(fig_receita_mensal, use_container_width=True)
-    st.plotly_chart(fig_receita_categorias, use_container_width=True)
+    with column2:
+        st.metric("Quantidade de vendas", utils.format_number(data.shape[0]))
+        st.plotly_chart(fig_receita_mensal, use_container_width=True)
+        st.plotly_chart(fig_receita_categorias, use_container_width=True)
 
-st.dataframe(data)
+
+with tab2:
+    column1, column2 = st.columns(2)
+    with column1:
+        st.metric("Receita", utils.format_number(data["Preço"].sum()), "R$")
+
+    with column2:
+        st.metric("Quantidade de vendas", utils.format_number(data.shape[0]))
+
+with tab3:
+    column1, column2 = st.columns(2)
+
+    quantidade_vendedores = st.number_input("Quantidade de vendedores: ", 2, 10, 5)
+    with column1:
+        st.metric("Receita", utils.format_number(data["Preço"].sum()), "R$")
+        fig_receita_vendedores = px.bar(
+            vendedores[["sum"]]
+            .sort_values("sum", ascending=False)
+            .head(quantidade_vendedores),
+            x="sum",
+            y=vendedores[["sum"]]
+            .sort_values("sum", ascending=False)
+            .head(quantidade_vendedores)
+            .index,
+            text_auto=True,
+            title=f"Top {quantidade_vendedores} vendedores (Receita)",
+        )
+
+        st.plotly_chart(fig_receita_vendedores)
+
+    with column2:
+        st.metric("Quantidade de vendas", utils.format_number(data.shape[0]))
+        fig_vendas_vendedores = px.bar(
+            vendedores[["count"]]
+            .sort_values("count", ascending=False)
+            .head(quantidade_vendedores),
+            x="count",
+            y=vendedores[["count"]]
+            .sort_values("count", ascending=False)
+            .head(quantidade_vendedores)
+            .index,
+            text_auto=True,
+            title=f"Top {quantidade_vendedores} vendedores (Quantidade de vendas)",
+        )
+
+        st.plotly_chart(fig_vendas_vendedores)
