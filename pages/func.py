@@ -62,6 +62,7 @@ class TaskManager:
         Returns:
             pd.DataFrame: A DataFrame containing the task data.
         """
+
         return pd.DataFrame(self.data)
 
     def calculate_allocated_hours(self, df):
@@ -94,15 +95,15 @@ class TaskManager:
         """
         if filter_option == "Today":
             return df[df['delivery'] == datetime.datetime.today().strftime('%Y-%m-%d')]
-        elif filter_option == "Tomorrow":
+        if filter_option == "Tomorrow":
             return df[df['delivery'] == (datetime.datetime.today() + timedelta(days=1)).strftime('%Y-%m-%d')]
-        elif filter_option == "Future":
+        if filter_option == "Future":
             return df[df['delivery'] > (datetime.datetime.today() + timedelta(days=1)).strftime('%Y-%m-%d')]
-        elif filter_option == "Custom" and len(custom_date) > 1:
+        if filter_option == "Custom" and len(custom_date) > 1:
             start_date, end_date = custom_date
             return df[(df['delivery'] >= start_date.strftime('%Y-%m-%d')) & (df['delivery'] <= end_date.strftime('%Y-%m-%d'))]
-        else:
-            return df  # If "All" is selected, show all
+        
+        return df
 
     def plot_data(self, filtered_df, allocated_hours):
         """
@@ -115,24 +116,50 @@ class TaskManager:
         Returns:
             plotly.graph_objs.Figure: A Plotly figure object representing the bar chart.
         """
-        allocated_filtered = filtered_df.groupby('user_id')['hours'].sum().reset_index(name='Allocated Hours')
-        allocated_filtered = allocated_filtered.merge(allocated_hours[['user_id']], on='user_id', how='left')
+        print(filtered_df)
 
-        # Calculate Free Time
-        allocated_filtered['Limit'] = 8
-        allocated_filtered['Free Time'] = allocated_filtered['Limit'] - allocated_filtered['Allocated Hours']
-        allocated_filtered['Free Time'] = allocated_filtered['Free Time'].apply(lambda x: max(0, x))
+        employee_type = {
+            'ana.costa': 'CLT',
+            'joao.pereira': 'CLT',
+            'maria.santos': 'CLT',
+            'lucas.oliveira': 'Estagiário'
+        }
+
+        # Adicionar coluna do tipo de funcionário ao DataFrame
+        filtered_df['employee_type'] = df['user_id'].map(employee_type)
+
+        # Limites de horas por tipo de funcionário
+        hours_limit = {
+            'CLT': 8,
+            'Estagiário': 5
+        }
+
+        total_hours = filtered_df.groupby(['user_id', 'delivery'])['hours'].sum().reset_index()
+        total_hours['employee_type'] = total_hours['user_id'].map(employee_type)
+        total_hours['hours_limit'] = total_hours['employee_type'].map(hours_limit)
+
+        # Calcular se há horas excedentes ou tempo livre
+        total_hours['free_time'] = total_hours.apply(lambda row: max(0, row['hours_limit'] - row['hours']), axis=1)
+        total_hours['exceed'] = total_hours.apply(lambda row: max(0, row['hours'] - row['hours_limit']), axis=1)
+
+        print(total_hours)
+
+        color_map = {
+            'hours': '#636EFA',  # Cor para o limite de horas
+            'free_time': '#00CC96',    # Cor para o tempo livre
+            'exceed': '#EF553B'        # Cor para o tempo excedido
+        }
 
         # Create bar chart
-        fig = px.bar(allocated_filtered, 
+        fig = px.bar(total_hours, 
                      x='user_id', 
-                     y=['Allocated Hours', 'Free Time', 'Limit'], 
-                     barmode='group', 
-                     title='Allocated Tasks and Free Time by User')
+                     y=['hours', 'free_time', 'exceed'], 
+                     barmode='stack', 
+                     title='Allocated Tasks and Free Time by User',
+                     color_discrete_map=color_map)
 
         # Update layout
         fig.update_layout(yaxis_title="Hours", xaxis_title="User")
-        fig.for_each_trace(lambda t: t.update(marker_color='green') if t.name == 'Free Time' else ())
         return fig
 
 # List of fake users
@@ -157,7 +184,7 @@ allocated_hours = task_manager.calculate_allocated_hours(df)
 
 # Streamlit UI for date filter
 st.subheader("Delivery Date Filter")
-filter_option = st.selectbox("Select delivery date", ["Today", "Tomorrow", "All", "Custom"])
+filter_option = st.selectbox("Select delivery date", ["Today", "Tomorrow", "Custom"])
 custom_date = None
 
 
