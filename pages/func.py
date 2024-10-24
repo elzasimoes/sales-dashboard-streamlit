@@ -98,7 +98,7 @@ class TaskManager:
             return df[df['delivery'] == (datetime.datetime.today() + timedelta(days=1)).strftime('%Y-%m-%d')]
         elif filter_option == "Future":
             return df[df['delivery'] > (datetime.datetime.today() + timedelta(days=1)).strftime('%Y-%m-%d')]
-        elif filter_option == "Custom" and None not in custom_date:
+        elif filter_option == "Custom" and len(custom_date) > 1:
             start_date, end_date = custom_date
             return df[(df['delivery'] >= start_date.strftime('%Y-%m-%d')) & (df['delivery'] <= end_date.strftime('%Y-%m-%d'))]
         else:
@@ -176,10 +176,10 @@ if filter_option == "Custom":
     )
 
     # Convertendo a data selecionada para o formato desejado
-    if None not in custom_date: 
+    if len(custom_date) > 1: 
         formatted_dates = [date.strftime('%Y-%m-%d') for date in custom_date]
         start_date_str = formatted_dates[0]  # Data de início
-        end_date_str = formatted_dates[1] if len(formatted_dates) > 1 else None  # Data de fim, se disponível
+        end_date_str = formatted_dates[1] if len(formatted_dates) > 1 else formatted_dates[0]
 
         st.write(f"Selected start date: {start_date_str}")
         st.write(f"Selected end date: {end_date_str}")
