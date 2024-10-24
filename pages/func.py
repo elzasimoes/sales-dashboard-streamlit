@@ -2,7 +2,8 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import random
-from datetime import datetime, timedelta
+import datetime
+from datetime import timedelta
 
 class TaskManager:
     """
@@ -43,7 +44,7 @@ class TaskManager:
                 
                 # Generate delivery date (today, tomorrow, or in the future)
                 days_until_delivery = random.choice([0, 1, random.randint(2, 7)])  # Today (0), Tomorrow (1), Future (>2 days)
-                delivery = datetime.today() + timedelta(days=days_until_delivery)
+                delivery = datetime.datetime.today() + timedelta(days=days_until_delivery)
                 
                 data.append({
                     'user_id': user,
@@ -92,13 +93,14 @@ class TaskManager:
             pd.DataFrame: A filtered DataFrame based on the delivery date.
         """
         if filter_option == "Today":
-            return df[df['delivery'] == datetime.today().strftime('%Y-%m-%d')]
+            return df[df['delivery'] == datetime.datetime.today().strftime('%Y-%m-%d')]
         elif filter_option == "Tomorrow":
-            return df[df['delivery'] == (datetime.today() + timedelta(days=1)).strftime('%Y-%m-%d')]
+            return df[df['delivery'] == (datetime.datetime.today() + timedelta(days=1)).strftime('%Y-%m-%d')]
         elif filter_option == "Future":
-            return df[df['delivery'] > (datetime.today() + timedelta(days=1)).strftime('%Y-%m-%d')]
-        elif filter_option == "Custom" and custom_date:
-            return df[df['delivery'] == custom_date.strftime('%Y-%m-%d')]
+            return df[df['delivery'] > (datetime.datetime.today() + timedelta(days=1)).strftime('%Y-%m-%d')]
+        elif filter_option == "Custom" and None not in custom_date:
+            start_date, end_date = custom_date
+            return df[(df['delivery'] >= start_date.strftime('%Y-%m-%d')) & (df['delivery'] <= end_date.strftime('%Y-%m-%d'))]
         else:
             return df  # If "All" is selected, show all
 
@@ -158,8 +160,33 @@ st.subheader("Delivery Date Filter")
 filter_option = st.selectbox("Select delivery date", ["Today", "Tomorrow", "All", "Custom"])
 custom_date = None
 
+
 if filter_option == "Custom":
-    custom_date = st.date_input("Choose a date:", value=datetime.today())
+    default_start, default_end = datetime.datetime.now() - timedelta(minutes=30), datetime.datetime.now()
+    today = datetime.datetime.now()
+    current_year = today.year
+    jan_1 = datetime.date(current_year, 1, 1)
+    dec_31 = datetime.date(current_year, 12, 31)
+
+    custom_date = st.date_input(
+        "Select your vacation for next year",
+        value=(default_start, default_end),
+        min_value=jan_1,
+        max_value=dec_31,
+    )
+
+    # Convertendo a data selecionada para o formato desejado
+    if None not in custom_date: 
+        formatted_dates = [date.strftime('%Y-%m-%d') for date in custom_date]
+        start_date_str = formatted_dates[0]  # Data de início
+        end_date_str = formatted_dates[1] if len(formatted_dates) > 1 else None  # Data de fim, se disponível
+
+        st.write(f"Selected start date: {start_date_str}")
+        st.write(f"Selected end date: {end_date_str}")
+
+
+    
+#custom_date = st.date_input("Choose a date:", value=datetime.today())
 
 # Filter data based on selection
 filtered_df = task_manager.filter_data(df, filter_option, custom_date)
@@ -171,5 +198,9 @@ fig = task_manager.plot_data(filtered_df, allocated_hours)
 st.plotly_chart(fig)
 
 # Display filtered data table
-st.write("Filtered Tasks")
+st.write("Filtered Tasks sem range")
+st.write(df[['user_id', 'issue_key', 'task', 'hours', 'delivery']])
+
+
+st.write("Filtered Tasks com range")
 st.write(filtered_df[['user_id', 'issue_key', 'task', 'hours', 'delivery']])
